@@ -30,20 +30,48 @@
 		exit(1);														\
 	} }
 
-void loadtoGPUmem(void** ptr, int size, int height, int width)
+/*__global__ void cuttngIMG(void* input_ptr, void** output_ptr, int size, int height, int width)
 {
-	cudaMalloc(ptr, size*height*width);
-	return;
-}
-void cutImg(void** ptr, void** ptrs[], int size, int height, int width, int result_height, int result_width)
-{
-	if(((height%result_height) != 0)||((width%result_width) != 0))
-		return;
-	for(int i = 0; i<height/result_height; i++)
+	int num = blockIdx.x * blockDim.x + threadIdx.x; //линейный адрес потока
+	int numbers = height * width; //число пикселей
+	void* ptr_first = input_ptr + num * numbers * size; //указатель на начало фрагмента
+	void* output_ptr_2 = &output_ptr + sizeof(void*) * num;
+	for(int i = 0; i<height; i++)
 	{
-		for(int j = 0; j< width/result_width; j++)
+		for(int j = 0; j<width; j++)
 		{
-			cudaMalloc(&ptrs[i*(height/result_height) + j], size*result_height*result_width);
+			int offset = i*blockDim * width + width * blockIdx.x + j;
+			*(output_ptr_2 + i*height + j) = *(ptr_first + offset);
 		}
 	}
+}*/
+
+void loadtoGPUmem(void* d_ptr, int size, int height, int width, void* src)
+{
+	cudaMalloc(&d_ptr, size*height*width);
+	cudaMemcpy(&d_ptr, src, size*height*width, cudaMemcpyHostToDevice);
+	return;
 }
+
+void deleteFromGPUMem(void* d_ptr)
+{
+	cudaFree(d_ptr);
+}
+
+void cutImg(void* d_ptr, void* arrOfPointers, int height, int width, int numbersPatchesH, int numbersPatchesW)
+{
+	if((height % numbersPathchesH) != 0)//1) проверяем делимость размеров на число фрагментов
+		return;
+	if((width % numbersPatchesW) != 0)
+		return;
+
+
+	int sizeArrOfPointers = numbersPatchesH * numbersPatchesW;
+	for(int i = 0; i<sizeArrOfPointers; i++)
+	{
+
+	}
+	//2) выделяем память, записывая указатели в массив
+	//3) запускаем копирование
+}
+
