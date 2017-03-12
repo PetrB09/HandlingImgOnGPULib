@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
+#include <mem.h>;
 
 #include <cuda.h>
 
@@ -29,22 +30,31 @@
 			result);													\
 		exit(1);														\
 	} }
-
-/*__global__ void cuttngIMG(void* input_ptr, void** output_ptr, int size, int height, int width)
+/**
+ *input_ptr - pointer to sourse array
+ *arrOfPtr - pointer to array of pointers to memory for copies
+ *size - size of element of sourse array
+ *height - height of sourse image
+ *width - width of sourse image
+ *newHeight - height of new image
+ *newWidth - width of new image
+ */
+__global__ void cuttngIMG(void* input_ptr, void** arrOfPtr, int size, int height, int width, int newHeight, int newWidth)
 {
-	int num = blockIdx.x * blockDim.x + threadIdx.x; //линейный адрес потока
-	int numbers = height * width; //число пикселей
-	void* ptr_first = input_ptr + num * numbers * size; //указатель на начало фрагмента
-	void* output_ptr_2 = &output_ptr + sizeof(void*) * num;
-	for(int i = 0; i<height; i++)
+	int NumberThread = blockIdx.x * blockDim.x + threadIdx.x; //linear address of thread
+	int SizeNewImg = newHeight * newWidth * size; //size of new picture
+	void* SrcElement = input_ptr + blockIdx.x * SizeNewImg + newWidth * size * threadIdx; //input pointer + all blocks which are highly + all elements which are rightly
+	void* NewElement = *(arrOfPtr + NumberThread * sizeof(void*));
+	for(int i = 0; i<newHeight; i++)
 	{
-		for(int j = 0; j<width; j++)
+		for(int j = 0; j<newWidth; j++)
 		{
-			int offset = i*blockDim * width + width * blockIdx.x + j;
-			*(output_ptr_2 + i*height + j) = *(ptr_first + offset);
+			memCpy()
+			NewElement += size;
+			SrcElement += size;
 		}
 	}
-}*/
+}
 
 void loadtoGPUmem(void* d_ptr, int size, int height, int width, void* src)
 {
@@ -58,20 +68,21 @@ void deleteFromGPUMem(void* d_ptr)
 	cudaFree(d_ptr);
 }
 
-void cutImg(void* d_ptr, void* arrOfPointers, int height, int width, int numbersPatchesH, int numbersPatchesW)
+void cutImg(void* d_ptr, void** arrOfPointers, int height, int width, int numbersPatchesH, int numbersPatchesW, int size)
 {
 	if((height % numbersPathchesH) != 0)//1) проверяем делимость размеров на число фрагментов
 		return;
 	if((width % numbersPatchesW) != 0)
 		return;
 
-
+	int newSizeH = height/numbersPatchesH;
+	int newSizeW = width/numbersPatchesW;
 	int sizeArrOfPointers = numbersPatchesH * numbersPatchesW;
-	for(int i = 0; i<sizeArrOfPointers; i++)
+	for(int i = 0; i<sizeArrOfPointers; i++)//2) выделяем память, записывая указатели в массив
 	{
-
+		cudaMalloc(&(arrOfPointers + i * sizeof(void*)), newSizeH*newSizeW*size);
 	}
-	//2) выделяем память, записывая указатели в массив
+
 	//3) запускаем копирование
 }
 
