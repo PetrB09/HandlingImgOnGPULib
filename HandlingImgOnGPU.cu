@@ -13,7 +13,7 @@
 #include <vector>
 #include <HandlingImgOnGPU.h>
 
-#include <cuda.h>
+//#include <cuda.h>
 
 //static const int WORK_SIZE = 256;
 
@@ -97,6 +97,4 @@ void cutImg(uchar4*** d_ptr, uchar4*** arrOfPointers, int height, int width, int
 	}
 	cuttingIMG<<<numbersPatchesH, numbersPatchesW>>>(d_ptr, arrOfPointers, newSizeH, newSizeW);
 
-	//3) запускаем копирование
 }
-
