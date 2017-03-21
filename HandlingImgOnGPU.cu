@@ -39,28 +39,28 @@
  *newHeight - height of new image
  *newWidth - width of new image
  */
-__global__ void cuttingIMG(uchar4*** input_ptr, uchar4*** arrOfPtr, int newHeight, int newWidth)
+__global__ void cuttingIMG(uchar4*** d_input_ptr, uchar4*** h_arrOfPtr, int newHeight, int newWidth)
 {
 	int NumberThread = blockIdx.x * blockDim.x + threadIdx.x; //linear address of thread
 
-	uchar4** NewArr = arrOfPtr[NumberThread]; //pointer to new array
+	uchar4** NewArr = h_arrOfPtr[NumberThread]; //pointer to new array
 
 	for(int i = 0; i<newHeight; i++)
 	{
 		for(int j = 0; j<newWidth; j++)
 		{
-			NewArr[i][j] = *(input_ptr) [blockIdx.x * newHeight + i][threadIdx.x * newWidth + j];
+			NewArr[i][j] = *(d_input_ptr) [blockIdx.x * newHeight + i][threadIdx.x * newWidth + j];
 		}
 	}
 }
 
-void loadtoGPUmem(uchar4*** d_ptr, int height, int width, uchar4*** src)
+void loadtoGPUmem(uchar4**** d_ptr, int height, int width, uchar4*** src)
 {
 	cudaMalloc(*d_ptr, sizeof(uchar4*)*height);
 	for(int i = 0; i<height; i++)
 	{
-		cudaMalloc(d_ptr[i], sizeof(uchar4) * width);
-		cudaMemcpy(d_ptr[i], (*src)[i], sizeof(uchar4) * width, cudaMemcpyHostToDevice);
+		cudaMalloc((*d_ptr)[i], sizeof(uchar4) * width);
+		cudaMemcpy((*d_ptr)[i], (*src)[i], sizeof(uchar4) * width, cudaMemcpyHostToDevice);
 	}
 	return;
 }
