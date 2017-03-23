@@ -18,19 +18,6 @@
 //static const int WORK_SIZE = 256;
 
 /**
- * This macro checks return value of the CUDA runtime call and exits
- * the application if the call failed.
- *
- * See cuda.h for error code descriptions.
- */
-#define CHECK_CUDA_RESULT(N) {											\
-	CUresult result = N;												\
-	if (result != 0) {													\
-		printf("CUDA call on line %d returned error %d\n", __LINE__,	\
-			result);													\
-		exit(1);														\
-	} }
-/**
  *input_ptr - pointer to sourse array
  *arrOfPtr - pointer to array of pointers to memory for copies
  *size - size of element of sourse array
@@ -39,17 +26,17 @@
  *newHeight - height of new image
  *newWidth - width of new image
  */
-__global__ void cuttingIMG(uchar4*** d_input_ptr, uchar4*** h_arrOfPtr, int newHeight, int newWidth)
+__global__ void cuttingIMG(BigMat* h_output, char* h_input, int newHeight, int newWidth, int sizeOfElem)
 {
 	int NumberThread = blockIdx.x * blockDim.x + threadIdx.x; //linear address of thread
-
-	uchar4** NewArr = h_arrOfPtr[NumberThread]; //pointer to new array
-
-	for(int i = 0; i<newHeight; i++)
+	int Offset = NumberThread * newHeight * newWidth * sizeOfElem;
+	char* OldArr = &(h_input[Offset]); //pointer to start old array
+	SmallMat* Worker = &(h_output->Mats[NumberThread]);
+	for(int i = 0; i<newHeight * newWidth; i++)
 	{
-		for(int j = 0; j<newWidth; j++)
+		for(int j = 0; j<sizeOfElem; j++)
 		{
-			NewArr[i][j] = *(d_input_ptr) [blockIdx.x * newHeight + i][threadIdx.x * newWidth + j];
+			Worker->Data[i+j] = OldArr[i*Offset + j];
 		}
 	}
 }
@@ -76,25 +63,22 @@ void deleteFromGPUMem(uchar4*** d_ptr, int height, int width)
 	cudaFree(d_ptr);
 }
 
-void cutImg(uchar4*** d_ptr, uchar4*** arrOfPointers, int height, int width, int numbersPatchesH, int numbersPatchesW)
+void cutImg(char* d_ptr, BigMat** arrOfPatches, int height, int width, int numbersPatchesH, int numbersPatchesW, int sizeOfElement)
 {
 	if((height % numbersPatchesH) != 0)//1) проверяем делимость размеров на число фрагментов
 		return;
 	if((width % numbersPatchesW) != 0)
 		return;
 
-	int newSizeH = height/numbersPatchesH;
+	int newSizeH = height/numbersPatchesH; //размеры новых картинок
 	int newSizeW = width/numbersPatchesW;
-	int sizeArrOfPointers = numbersPatchesH * numbersPatchesW;
-	cudaMalloc(&(arrOfPointers), sizeof(uchar4**) * sizeArrOfPointers);
-	for(int i = 0; i<sizeArrOfPointers; i++)//2) выделяем память, записывая указатели в массив
-	{
-		cudaMalloc(&(arrOfPointers[i]), sizeof(uchar4*) * newSizeH);
-		for(int j = 0; j<newSizeH; j++)
-		{
-			cudaMalloc(&(arrOfPointers[i][j]), sizeof(uchar4)*newSizeW);
-		}
-	}
-	cuttingIMG<<<numbersPatchesH, numbersPatchesW>>>(d_ptr, arrOfPointers, newSizeH, newSizeW);
+	BigMat h_Mats(numbersPatchesH, numbersPatchesW);
+	SmallMat* pointer;
+	SmallMat** tmp_pointer = &pointer;
+	cudaMalloc(tmp_pointer, sizeof(SmallMat)* numbersPatchesH * numbersPatchesW); //память под маленькие картинки
+	h_Mats.SetData(pointer);
+	cuttingIMG<<<numbersPatchesH, numbersPatchesW>>>(&h_Mats, d_ptr, newSizeH, newSizeW, sizeOfElement);
+	//запись новых картинок и указателей на них
 
 }
+
