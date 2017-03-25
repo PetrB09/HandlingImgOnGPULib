@@ -41,25 +41,15 @@ __global__ void cuttingIMG(BigMat* h_output, char* h_input, int newHeight, int n
 	}
 }
 
-void loadtoGPUmem(uchar4**** d_ptr, int height, int width, uchar4*** src)
+void loadtoGPUmem(char** d_ptr, char* src, int height, int width, int sizeOfElement)
 {
-	cudaMalloc(*d_ptr, sizeof(uchar4*)*height);
-	for(int i = 0; i<height; i++)
-	{
-		cudaMalloc((*d_ptr)[i], sizeof(uchar4) * width);
-		cudaMemcpy((*d_ptr)[i], (*src)[i], sizeof(uchar4) * width, cudaMemcpyHostToDevice);
-	}
+	cudaMalloc(d_ptr, sizeof(char)*height*width*sizeOfElement);
+	cudaMemcpy(*d_ptr, src, sizeof(char) * width * height, cudaMemcpyHostToDevice);
 	return;
 }
 
-void deleteFromGPUMem(uchar4*** d_ptr, int height, int width)
+void deleteFromGPUMem(char* d_ptr)
 {
-	uchar4** Arr = *d_ptr;
-	for(int i = 0; i<height; i++)
-	{
-		cudaFree(Arr[i]);
-	}
-	cudaFree(Arr);
 	cudaFree(d_ptr);
 }
 
@@ -79,6 +69,7 @@ void cutImg(char* d_ptr, BigMat** arrOfPatches, int height, int width, int numbe
 	h_Mats.SetData(pointer);
 	cuttingIMG<<<numbersPatchesH, numbersPatchesW>>>(&h_Mats, d_ptr, newSizeH, newSizeW, sizeOfElement);
 	//запись новых картинок и указателей на них
-
+	*arrOfPatches = &h_Mats;
+	return;
 }
 
